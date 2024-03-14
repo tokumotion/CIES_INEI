@@ -101,7 +101,6 @@ enaho_22 %>%
   group_by(dominio, ld, rural) %>% 
   summarise(n())
 # ld es el deflactor espacial
-table(as_factor(enaho_22$dominio))
 
 # Hago un recoding de variables para encontrar de que region es cada dominio
 library(sjmisc)
@@ -112,9 +111,6 @@ enaho_22$reg_nat <- rec(enaho_22$dominio,
             8 = 4 [Lima Metropolitana]'),
     var.label = "Region Natural",
     as.num = FALSE)
-
-table(enaho_22$reg_nat)
-head(enaho_22$reg_nat)
 
 # quiero crear una copia de dominio que tenga los titulos, no en lower
 enaho_22$dominio2 <- str_to_title(as_factor(enaho_22$dominio))
@@ -134,7 +130,7 @@ enaho_22 <- enaho_22 %>%
          dominio_ld = replace(dominio_ld,
                               dominio_ld == 'Lima Metropolitana Urbano',
                               "Lima Metropolitana"))
-table(enaho_22$dominio_ld)
+
 # aca estamos crenao una variable limareg que me identifica si esto en lima, y 
 # tambien me dice si estoy en el callao
 enaho_22 <- enaho_22 %>% 
@@ -150,4 +146,89 @@ enaho_22 <- enaho_22 %>%
          limareg = replace(limareg,
                            limareg == 0,
                            'Peru sin Lima'))
-table(enaho_22$limareg)
+
+#### purr ####
+library(purrr)
+# queremos usar funciones de forma iterativa
+vect_ej <- c(1, 2, 3, 4)
+# R vectoriza las funciones de forma automatica si tener que crear loops
+paste('prefijo', vect_ej, 'sufijo')
+tremenda_funcion <- function(x){
+  x ^ 3
+}
+tremenda_funcion(vect_ej)
+
+# para que sirve map()
+# map() me devuelve una lista con los resultados de la función que va en map()
+# esto se aplica al vector
+map(vect_ej, tremenda_funcion)
+# es mas estricto que sapply(), pero te bota error si no puede darte la 
+# respuesta a la funcion de forma estricta
+# tambien puedo meterle la funcion directamente a map()
+map(vect_ej, function(x) {x ^ 3})
+# hay diferentes maps, ejemplos
+map_dbl(vect_ej, ~ {.x ^ 3}) 
+# en map_dbl() se puede poner ~ {.x} en vez de function(x){x}
+# map_dbl() te devuelve un vector de numeros reales, no te va a dar nada mas y 
+# te va a dar error si el resultado de la formula no es un dbl
+map_int(vect_ej, ~ {.x ^ 3})
+# map_int() te devuelve un vector de numeros enteros, no te va a dar nada mas y 
+# te va a dar error si el resultado de la formula no es un dbl
+map_int(vect_ej, ~ {.x ^ 1/3}) # si el resultado NO es un entero, te bota error
+# ahora puedo usar map_df() para crear tibbles
+map_df(vect_ej, ~ tibble(name = .x ^ 3))
+# le puedo meter el nombre de la columna si lo declaro en el tibble
+
+# quiero abrir varias tablas al mismo tiempo con map(), para que me devuelva 
+# una lista de data.frames
+list.files(recursive = TRUE, pattern = "*.sav")[c(2, 7, 13)]
+list_tables <- map(list.files(recursive = TRUE, pattern = "*.sav")[c(2, 7, 13)], 
+                    read_sav)
+# podemos encadenar las funciones en map()
+list_tables <- map(list.files(recursive = TRUE, pattern = "*.sav")[c(2, 7, 13)], 
+                   read_sav) %>% 
+  map(set_names, tolower) 
+# aca estoy pasando la funcion tolower() dentro de set_names(), encadeno el 
+# map() original con otro map(), es mas rapido así
+list_tables <- map(list.files(recursive = TRUE, pattern = "*.sav")[c(2, 7, 13)], 
+                   read_sav) %>% 
+  map(set_names, tolower) %>% 
+  set_names(paste0('a', 2020:2022))
+# aca estoy pasando nombres a cada miembro de la lista de map() me bota, esto 
+# tiene que estar fuera del map()
+
+# para pasar objeto sobre el que trabajo a otro map() al que le quiero aplicar 
+# un mutate u otra función parecida, le pongo . para que reconozca qué objeto 
+# debe jalar
+list_tables <- map(list.files(recursive = TRUE, pattern = "*.sav")[c(2, 7, 13)], 
+                   read_sav) %>% 
+  map(set_names, tolower) %>% 
+  map(. %>% mutate(id_hogar = paste(año, 
+                              ubigeo, 
+                              estrato, 
+                              conglome, 
+                              vivienda, 
+                              hogar, sep = "__"))) %>% 
+  set_names(paste0('a', 2020:2022))
+
+identificador <- function(df){
+  df %>% 
+    mutate(id_hogar= paste(año, 
+                           ubigeo, 
+                           estrato, 
+                           conglome, 
+                           vivienda, 
+                           hogar, sep = "__"),
+           cod_dep = substr(ubigeo, start = 1, stop = 2),
+           cod_prov = substr(ubigeo, start = 1, stop = 4))
+}
+
+# puedo meterle a map() una funcion propia y encadenar todo para que me bote el 
+# resultado. Encadenar diferentes map() es mas rapido que meter toda la funcion 
+# en un solo map()
+tablas <- list.files(recursive = TRUE, pattern = "*.sav")[c(2, 7, 13)]
+map(tablas, read_sav) %>% 
+  map(set_names, tolower) %>% 
+  map(identificador) %>% 
+  set_names(paste0('a', 2020:2022)) %>% 
+  map_df(~ head(.x$id_hogar))
