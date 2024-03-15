@@ -1,0 +1,154 @@
+---
+title: "Depresión en el Perú"
+subtitle: "ENDES 2013 - 2022"
+author: "Gonzalo Urbina, La Farola"
+date: "Junio 2023"
+output: pdf_document
+bibliography: references.bib
+link-citations: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(here)
+library(haven)
+library(labelled)
+library(stringr)
+library(purrr)
+library(dplyr)
+library(gt)
+library(srvyr)
+
+load(here("datos", "consolidado.RData"))
+
+```
+
+Las siguientes estimaciones han sido preparadas y calculadas empleando las herramientas que se desarrollan en el taller [**INEI con R**](https://lafarola.thinkific.com/courses/encuestas-nacionales-con-R). El taller incluye código para reproducir y extender los cálculos que se presentan a continuación, así como una sesión de asesoría para ayudarte a adaptar este y otros ejemplos reproducibles a tu propio proyecto de investigación.
+
+## Severidad de Depresión: PHQ - 9
+
+El *Patient Health Questionnaire* (PHQ), es un cuestionario auto-administrado de salud mental que contiene un módulo de 9 preguntas (el PHQ - 9) para evaluar la presencia y severidad de depresión. El módulo de depresión ha sido validado ampliamente como herramienta de diagnóstico rápido [ver @kroenke2001] y es parte del cuestionario de Salud que se recoge en la ENDES desde el 2013.
+
+Las siguientes nueve preguntas comprenden el PHQ - 9.
+
+`r str_sub(var_label(consolidado$"2019"$qs700a), end = 54)`
+
+1.  `r str_sub(var_label(consolidado$"2019"$qs700a), start = 57)`: qs700a
+2.  `r str_sub(var_label(consolidado$"2019"$qs700b), start = 56)`: qs700b
+3.  `r str_sub(var_label(consolidado$"2019"$qs700c), start = 56)`: qs700c
+4.  `r str_sub(var_label(consolidado$"2019"$qs700d), start = 56)`: qs700d
+5.  `r str_sub(var_label(consolidado$"2019"$qs700e), start = 56)`: qs700e
+6.  `r str_sub(var_label(consolidado$"2019"$qs700f), start = 56)`: qs700f
+7.  `r str_sub(var_label(consolidado$"2019"$qs700g), start = 56)`: qs700g
+8.  `r str_sub(var_label(consolidado$"2019"$qs700h), start = 56)`: qs700h
+9.  `r str_sub(var_label(consolidado$"2019"$qs700i), start = 56)`: qs700i
+
+Cada pregunta se responde con uno de cuatro puntajes / categorías:
+
+0 - Para Nada\
+1 - Varios días (1 a 6 días)\
+2 - La mayoría de días (7 a 11 días)\
+3 - Casi todos los días (12 a más días)
+
+En la evaluación más simple, los nueve puntajes se agregan para estimar la severidad en cinco categorías, considerando de "Moderada" en adelante como "Depresión presente" [por ejemplo ver @martinachávez2022]:
+
+`r consolidado$"2018" %>% group_by(Severidad = dep_cats) %>% summarise(Mínimo = min(dep_score), Máximo = max(dep_score)) %>% gt::gt(.)`
+
+## Algunas Estimaciones
+
+Las siguientes estimaciones porcentuales se refieren a la población de más de 15 años de edad. Este factor de expansión está presente con diferentes nombres en todos los años de la serie ("peso15años", "peso_may15años", "peso15_ajus" y "peso15_amas"). 
+
+```{r warning=FALSE, echo=FALSE}
+
+cons_s <- consolidado %>% 
+  imap(~ .x %>% 
+        filter(!is.na(peso15_amas)) %>% 
+        mutate(peso = peso15_amas/1000000,
+               yr = .y) %>% 
+        as_survey_design(id = qhcluster, weights = peso))
+
+total <- cons_s %>% map_df(~ .x %>% 
+                    group_by(yr, dep_dummy) %>% 
+                    summarise(100*signif(survey_prop(proportion = TRUE, 
+                                                     vartype = "ci"), 3)) %>% 
+                    rename("% Dep" = coef,
+                           "L. Inf" = "_low",
+                           "L. Sup" = "_upp"))
+
+sexo <- cons_s %>% map_df(~ .x %>% 
+                    filter(!is.na(qssexo)) %>%  
+                    mutate(sexo = as_factor(qssexo)) %>% 
+                    group_by(yr, sexo, dep_dummy) %>% 
+                    summarise(100*signif(survey_prop(proportion = TRUE, 
+                                                     vartype = "ci"), 3)))
+
+zona <- cons_s %>% map_df(~ .x %>% 
+                    #filter(!is.na(qssexo)) %>% 
+                    mutate(zona = as_factor(hv025)) %>% 
+                    group_by(yr, zona, dep_dummy) %>% 
+                    summarise(100*signif(survey_prop(proportion = TRUE, 
+                                                     vartype = "ci"), 3)))
+
+total <- total %>% filter(dep_dummy == "Depresion") %>% 
+  select(-dep_dummy)
+
+mujer <- sexo %>% filter(sexo == "Mujer", dep_dummy == "Depresion") %>% 
+                  ungroup() %>% 
+                  dplyr::select(-dep_dummy, -sexo) %>% 
+                  rename("% Dep_M" = coef,
+                         "L. Inf_M" = "_low",
+                         "L. Sup_M" = "_upp")
+hombre <- sexo %>% filter(sexo == "Hombre", dep_dummy == "Depresion") %>%
+                   ungroup() %>% 
+                   dplyr::select(-dep_dummy, -sexo) %>% 
+                    rename("% Dep_H" = coef,
+                           "L. Inf_H" = "_low",
+                           "L. Sup_H" = "_upp")
+urbana <- zona %>% filter(zona == "Urbana", dep_dummy == "Depresion") %>% 
+                   ungroup() %>% 
+                   dplyr::select(-dep_dummy, -zona) %>% 
+                     rename("% Dep_U" = coef,
+                           "L. Inf_U" = "_low",
+                           "L. Sup_U" = "_upp")
+rural <- zona %>% filter(zona == "Rural", dep_dummy == "Depresion") %>% 
+                  ungroup() %>% 
+                  dplyr::select(-dep_dummy, -zona) %>% 
+                    rename("% Dep_R" = coef,
+                           "L. Inf_R" = "_low",
+                           "L. Sup_R" = "_upp")
+
+tabla_s <- left_join(total, mujer, by = "yr")
+tabla_s <- left_join(tabla_s, hombre, by = "yr")
+tabla_z <- left_join(total, rural, by = "yr")
+tabla_z <- left_join(tabla_z, urbana, by = "yr")
+
+tabla_s %>% ungroup() %>% 
+  gt(rowname_col = "yr") %>% 
+  tab_spanner(label = "Nacional", columns = c("% Dep", "L. Inf", "L. Sup")) %>% 
+  tab_spanner(label = "Mujeres", columns = c("% Dep_M", "L. Inf_M", "L. Sup_M")) %>% 
+  tab_spanner(label = "Hombres", columns = c("% Dep_H", "L. Inf_H", "L. Sup_H")) %>% 
+  cols_label("% Dep_M" = "% Dep", "L. Inf_M" = "L. Inf", "L. Sup_M" = "L. Sup", "% Dep_H" = "% Dep", "L. Inf_H" = "L. Inf", "L. Sup_H" = "L. Sup") %>% 
+  tab_header(title = "Depresión Moderada a Severa por Sexo",
+             subtitle = "ENDES 2013 - 2022")
+
+```
+
+```{r warning=FALSE, echo=FALSE}
+
+tabla_z %>% ungroup() %>% 
+  gt(rowname_col = "yr") %>%
+  tab_spanner(label = "Nacional", columns = c("% Dep", "L. Inf", "L. Sup")) %>% 
+  tab_spanner(label = "Rural", columns = c("% Dep_R", "L. Inf_R", "L. Sup_R")) %>% 
+  tab_spanner(label = "Urbano", columns = c("% Dep_U", "L. Inf_U", "L. Sup_U")) %>% 
+  cols_label("% Dep_R" = "% Dep", "L. Inf_R" = "L. Inf", "L. Sup_R" = "L. Sup", "% Dep_U" = "% Dep", "L. Inf_U" = "L. Inf", "L. Sup_U" = "L. Sup") %>% 
+  tab_header(title = "Depresión Moderada a Severa por Ámbito",
+             subtitle = "ENDES 2013 - 2022")
+
+```
+
+### Extensión y aplicaciones
+
+Las estimaciones de depresión también se pueden realizar a nivel regional y, considerando varianza e intervalos de confianza, a través de otras categorías espaciales y demográficas como regiones naturales, grupos de edad y nivel de educación. El estimador de depresión además de un potencial tema central de investigación, puede ser usado como variable explicativa de otros indicadores de salud de individuos y también del hogar. 
+
+## Bibliografía
