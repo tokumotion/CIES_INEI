@@ -17,19 +17,31 @@ depas %>%
          trimestre == 2,
          distrito %in% c('Surco', 'San Miguel', 'Miraflores')) %>% 
   ggplot(data = ., aes(x = superficie, 
+<<<<<<< HEAD
                        y = precio_soles_corrientes/1000)) + 
+=======
+                       y = precio_soles_corrientes)) + 
+>>>>>>> 882b0c484dcb97e24bd70dcff50d577bc9018090
   geom_point(aes(color = as.factor(habitaciones))) +
   stat_smooth(method = loess) +
   facet_grid(distrito ~ .) + 
   labs(title = 'Precios y Superficie de Departamentos Vendidos',
        subtitle = 'Segundo Trimestre de 2022',
        x = 'Superficie (m2)',
+<<<<<<< HEAD
        y = 'Precio en miles de (S/)',
        color = 'Habitaciones',
        caption = 'Fuente: Estadísticas BCRP') + 
   scale_color_colorblind()+ 
   theme_minimal() + 
   ylim(c(0, 1500))
+=======
+       y = 'Precio (S/)',
+       color = 'Habitaciones',
+       caption = 'Fuente: Estadísticas BCRP') + 
+  scale_color_colorblind() + 
+  theme_minimal()
+>>>>>>> 882b0c484dcb97e24bd70dcff50d577bc9018090
 
 # como hacer varios tipos de geometrias sobre la base de una sola variable
 p <- depas %>% 
@@ -65,6 +77,7 @@ s + geom_point() + ggtitle('Puntos') + ylim(c(0, 6000))
 s + geom_text() + geom_point() + ggtitle('Texto') # usar ggrepel para esto
 
 s + geom_col() + ggtitle('Barras')
+<<<<<<< HEAD
 
 library(paletteer); library(scales)
 show_col(paletteer_d(`"MoMAColors::Warhol"`))
@@ -89,3 +102,5 @@ depas %>%
   ylim(c(0, 1500))
 
 rrapply::rrapply # asi puedes ver el codigo que se usa para la funcion
+=======
+>>>>>>> 882b0c484dcb97e24bd70dcff50d577bc9018090
