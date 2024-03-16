@@ -1,6 +1,6 @@
 # Consolidacion de Tablas
 
-library(here); library(purrr)
+library(here); library(purrr); library(sjmisc); library(hutils)
 
 source(here('investigacion', 
             'scripts', 
@@ -14,9 +14,11 @@ sumaria  <- ruteador(carpeta = here('investigacion', "datos"),
                    patron_regex = "(?i)Sumaria-[0-9]{4}.sav$") # Sumarias
 
 # Lectura de archivos y creacion de listas ####
-gob_l <- map(gober, leer_sav) %>% set_names(2013:2022)
+gob_l <- map(gober, leer_sav) %>% set_names(2013:2022) %>% 
+  keep(names(.) %in% 2013:2022)
 
-sum_l <- map(sumaria, leer_sav) %>% set_names(2013:2022)
+sum_l <- map(sumaria, leer_sav) %>% set_names(2013:2022) %>% 
+  keep(names(.) %in% 2013:2022)
 
 # Creacion de indices de data frames ####
 crear_indice <- function(tabla){
@@ -38,17 +40,17 @@ indices_sum_l <- map(sum_l, crear_indice) %>%
 # esta funcion me devuelve los labels que son iguales en todas las encuestas en 
 # un data.frame
 find_repeated_observations <- function(df_list, column) {
-  unique_values <- lapply(df_list, function(df) unique(df[[column]]))
-  common_values <- Reduce(intersect, unique_values)
+  common_values <- reduce(map(df_list, \(x) pluck(x, "name")), intersect)   
   
-  repeated_data <- lapply(df_list, function(df) df[df[[column]] %in%
-                                                     common_values, ]) %>% 
-    reduce(intersect)
-  return(repeated_data)
+  repeated_data <- map(df_list, 
+                       function(x) filter(x, name %in% common_values)) %>% 
+    .[length(.)]
+  
+  return(tibble(repeated_data[[1]]))
 }
 
-find_repeated_observations(indices_gob_l, 'label')
-find_repeated_observations(indices_sum_l, 'label')
+rep_obs_gob_l <- find_repeated_observations(indices_gob_l, 'name')
+rep_obs_sum_l <- find_repeated_observations(indices_sum_l, 'name')
 
 # identificador ####
 identificador <- function(df){
@@ -78,6 +80,11 @@ identificador <- function(df){
 gob_l <- map(gob_l, identificador)
 sum_l <- map(sum_l, identificador)
 
+sum_l %>% 
+  map(fac_pob = factor07 * mieperho)
+
+sum_l <- map(sum_l, ~ .x %>% group_by(pobreza) %>% mutate(fac_pob = factor07 * mieperho))
+    
 region_indice <- data.frame(
   cod_dep = str_pad(seq(1, 25, by = 1), width = 2, side = 'left', pad = '0'),
   region = gsub("^\\s*\\*\\s*", "", c("*   Amazonas", "*   Áncash", 
@@ -92,6 +99,8 @@ region_indice <- data.frame(
                                       "*   San Martín", "*   Tacna", 
                                       "*   Tumbes", "*   Ucayali"))
 )
+
+
 
 # Seleccion de variables y estimacion de variable depresion ####
 csal_l <- map(csal_l, ~ .x %>% 

@@ -313,12 +313,4 @@ ruteador <- function(ruta, patron_regex){
     purrr::pluck('rutas')
 }
 
-#### esto hay que revisarlo ####
-list.files(path = '~/Documents/CIES_INEI/', recursive = TRUE, full.names = TRUE) %>% 
-  tibble(rutas = ., rutas_minusculas = tolower(.)) %>% 
-  filter(str_detect(rutas_minusculas, "^(?i)sumaria-\\d+\\.sav$"))
-
-rutas_sumarias <- ruteador(ruta = '~/Documents/CIES_INEI/', 
-                           patron_regex = "^(?i)sumaria-\\d+\\.sav$")
-
 # depresion +  reproducibilidad ####
