@@ -1,5 +1,6 @@
 # Consolidacion de Tablas
 
+# helper functions y librerias ####
 pacman::p_load(questionr, here, hutils, srvyr, tidyverse, rrapply, labelled, sjmisc)
 
 source(here('investigacion', 
@@ -145,3 +146,5 @@ sum_l <- map(sum_l, ~ .x %>% mutate(limareg = as.numeric(substr(ubigeo, start = 
 consolidado <- map2(sum_l, gob_l, ~ left_join(.x, .y, by = 'id_hogar'))
 
 save(consolidado, file = here('investigacion', "datos", "consolidado.RData"))
+
+# correlaciones y graficos ####
