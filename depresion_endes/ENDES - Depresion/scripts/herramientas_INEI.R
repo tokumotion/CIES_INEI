@@ -22,7 +22,7 @@ ruteador <- function(carpeta = getwd(), patron_regex){
 
 leer_sav <- function(ruta){
   
-  set_names(read_sav(ruta), tolower)
+  set_names(read_sav(ruta, encoding = 'latin1'), tolower)
   
 }
 
