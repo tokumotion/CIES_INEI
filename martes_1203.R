@@ -150,7 +150,7 @@ wtd.table(x = as_factor(enaho_22$pobreza),
 # POBLACIONAL, TOMA EN CUENTA QUE LA COLUMNA DE POBREZA DEBE ESTA as_factor()
 frq(as_factor(enaho_22$pobreza), 
     show.na = FALSE, 
-    weights = enaho_22$facpob)
+    weights = enaho_22$facpob) 
 # esta funcion me deja crear una tabla para mostrar los valores poblacionales
 # siempre hay que pner los pesos creados por facpob
 
