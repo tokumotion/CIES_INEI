@@ -79,8 +79,13 @@ identificador <- function(df){
 }
 
 gob_l <- map(gob_l, identificador)
+# cambiar los titulos de los dataframes
+names_gob_l <- map(gob_l, ~ .x %>% names) %>% 
+  map(., ~ .x %>% 
+        str_replace_all(patter = '\\$', replacement = "_"))
+# se cambia el nombre de las columnas en cada dataframe usando set_names()
+gob_l <- map2(.x = gob_l, .y = names_gob_l, .f = ~ set_names(.x, .y))
 sum_l <- map(sum_l, identificador)
-
 # tabla de regiones ####
 region_indice <- data.frame(
   cod_dep = str_pad(seq(1, 25, by = 1), width = 2, side = 'left', pad = '0'),
@@ -143,8 +148,7 @@ sum_l <- map(sum_l, ~ .x %>% mutate(limareg = as.numeric(substr(ubigeo, start = 
                                                       'Peru sin Lima')))
 
 # unir sum_l con gob_l ####
-consolidado <- map2(sum_l, gob_l, ~ left_join(.x, .y, by = 'id_hogar'))
+common_values <- intersect(names(sum_l[[1]]), names(gob_l[[1]]))
+consolidado <- map2(sum_l, gob_l, ~ left_join(.x, .y, by = common_values))
 
 save(consolidado, file = here('investigacion', "datos", "consolidado.RData"))
-
-# correlaciones y graficos ####
