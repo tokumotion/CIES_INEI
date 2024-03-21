@@ -82,7 +82,7 @@ gob_l <- map(gob_l, identificador)
 # cambiar los titulos de los dataframes
 names_gob_l <- map(gob_l, ~ .x %>% names) %>% 
   map(., ~ .x %>% 
-        str_replace_all(patter = '\\$', replacement = "_"))
+        str_replace_all(pattern = '\\$', replacement = "_"))
 # se cambia el nombre de las columnas en cada dataframe usando set_names()
 gob_l <- map2(.x = gob_l, .y = names_gob_l, .f = ~ set_names(.x, .y))
 sum_l <- map(sum_l, identificador)
